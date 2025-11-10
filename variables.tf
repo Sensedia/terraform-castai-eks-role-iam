@@ -47,6 +47,18 @@ variable "attach_ssm_managed_instance_core" {
   default     = true
 }
 
+variable "attach_custom_instance_policy" {
+  description = "If true, attaches the policy ARN defined in custom_instance_policy_arn to the Instance Profile Role."
+  type        = bool
+  default     = false
+}
+
+variable "custom_instance_policy_arn" {
+  description = "Custom IAM Policy ARN to be attached to the Instance Profile Role."
+  type        = string
+  default     = null
+}
+
 variable "enable_ipv6" {
   type        = bool
   description = "Whether to enable IPv6 CNI policy for the cluster."
