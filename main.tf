@@ -5,19 +5,18 @@ locals {
   iam_policy_name            = var.create_iam_resources_per_cluster ? "CastEKSPolicy-${local.resource_name_postfix}" : "CastEKSPolicy-tf"
   iam_role_policy_name       = "castai-user-policy-${substr(local.resource_name_postfix, 0, 45)}"
   instance_profile_role_name = "castai-eks-instance-${substr(local.resource_name_postfix, 0, 44)}"
-  iam_policy_prefix          = "arn:${data.aws_partition.current.partition}:iam::aws:policy"
+  iam_policy_prefix          = "arn:aws:iam::aws:policy"
   ipv6_policy_name           = "CastEC2AssignIPv6Policy-${local.resource_name_postfix}"
 
-  castai_instance_profile_policy_list = flatten([
+  castai_instance_profile_policy_list = compact(flatten([
     "${local.iam_policy_prefix}/AmazonEKSWorkerNodePolicy",
     "${local.iam_policy_prefix}/AmazonEC2ContainerRegistryReadOnly",
     var.attach_worker_cni_policy ? ["${local.iam_policy_prefix}/AmazonEKS_CNI_Policy"] : [],
     var.attach_ebs_csi_driver_policy ? ["${local.iam_policy_prefix}/service-role/AmazonEBSCSIDriverPolicy"] : [],
-    var.attach_ssm_managed_instance_core ? ["${local.iam_policy_prefix}/AmazonSSMManagedInstanceCore"] : []
-  ])
+    var.attach_ssm_managed_instance_core ? ["${local.iam_policy_prefix}/AmazonSSMManagedInstanceCore"] : [],
+    var.attach_custom_instance_policy ? [var.custom_instance_policy_arn] : []
+  ]))
 }
-
-data "aws_partition" "current" {}
 
 # castai eks settings (provides required iam policies)
 
@@ -60,8 +59,8 @@ resource "aws_iam_role_policy" "castai_role_iam_policy" {
 # iam - instance profile role
 
 resource "aws_iam_role" "instance_profile_role" {
-  name = local.instance_profile_role_name
-  max_session_duration =  var.max_session_duration
+  name                 = local.instance_profile_role_name
+  max_session_duration = var.max_session_duration
   assume_role_policy = jsonencode({
     Version : "2012-10-17"
     Statement : [
@@ -71,9 +70,9 @@ resource "aws_iam_role" "instance_profile_role" {
         Principal = {
           Service = "ec2.amazonaws.com"
         }
-        "Action": [
-            "sts:AssumeRole",
-            "sts:TagSession"
+        "Action" : [
+          "sts:AssumeRole",
+          "sts:TagSession"
         ]
       }
     ]
@@ -127,7 +126,7 @@ data "aws_iam_policy_document" "cast_assume_role_policy" {
     }
 
     dynamic "condition" {
-      for_each = var.castai_user_external_id!= null ? [1] : []
+      for_each = var.castai_user_external_id != null ? [1] : []
       content {
         test     = "StringEquals"
         variable = "sts:ExternalId"
